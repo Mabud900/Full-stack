@@ -1,0 +1,128 @@
+
+const http = require('http');
+const PORT = process.env.PORT || 3000;
+http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+  res.end('<h2>This is a CLI-based application. Run the Node script in your terminal.</h2>');
+}).listen(PORT, () => {
+  console.log(`Mini-server running -> http://localhost:${PORT}`);
+});
+
+const readline = require('readline');
+
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+  prompt: ''
+});
+
+const employees = []; // in-memory array of { id: string, name: string }
+
+function showMenu() {
+  console.log('\nEmployee Management System');
+  console.log('1. Add Employee');
+  console.log('2. List Employees');
+  console.log('3. Remove Employee');
+  console.log('4. Exit\n');
+}
+
+function ask(question) {
+  return new Promise(resolve => {
+    rl.question(question, answer => resolve(answer));
+  });
+}
+
+async function addEmployee() {
+  const rawName = await ask('Enter employee name: ');
+  const name = rawName.trim();
+  if (!name) {
+    console.log('Name cannot be empty. Aborting add.');
+    return;
+  }
+
+  const rawId = await ask('Enter employee ID: ');
+  const id = rawId.trim();
+  if (!id) {
+    console.log('ID cannot be empty. Aborting add.');
+    return;
+  }
+
+  // Check duplicate ID
+  if (employees.some(e => e.id.toLowerCase() === id.toLowerCase())) {
+    console.log(`Employee ID "${id}" already exists. Use a unique ID.`);
+    return;
+  }
+
+  employees.push({ id, name });
+  console.log(`Employee ${name} (ID: ${id}) added successfully.`);
+}
+
+function listEmployees() {
+  console.log('\nEmployee List:');
+  if (employees.length === 0) {
+    console.log('(no employees)');
+    return;
+  }
+  employees.forEach((e, idx) => {
+    console.log(`${idx + 1}. Name: ${e.name}, ID: ${e.id}`);
+  });
+}
+
+async function removeEmployee() {
+  if (employees.length === 0) {
+    console.log('No employees to remove.');
+    return;
+  }
+  const rawId = await ask('Enter employee ID to remove: ');
+  const id = rawId.trim();
+  if (!id) {
+    console.log('ID cannot be empty. Aborting remove.');
+    return;
+  }
+
+  const idx = employees.findIndex(e => e.id.toLowerCase() === id.toLowerCase());
+  if (idx === -1) {
+    console.log(`No employee found with ID "${id}".`);
+    return;
+  }
+
+  // Optional confirmation
+  const confirm = await ask(`Are you sure you want to remove ${employees[idx].name} (ID: ${employees[idx].id})? (y/n): `);
+  if (confirm.trim().toLowerCase() !== 'y') {
+    console.log('Removal cancelled.');
+    return;
+  }
+
+  const removed = employees.splice(idx, 1)[0];
+  console.log(`Employee ${removed.name} (ID: ${removed.id}) removed successfully.`);
+}
+
+async function mainLoop() {
+  while (true) {
+    showMenu();
+    const choiceRaw = await ask('Enter your choice: ');
+    const choice = choiceRaw.trim();
+
+    if (choice === '1') {
+      await addEmployee();
+    } else if (choice === '2') {
+      listEmployees();
+    } else if (choice === '3') {
+      await removeEmployee();
+    } else if (choice === '4' || choice.toLowerCase() === 'exit') {
+      console.log('Goodbye!');
+      break;
+    } else {
+      console.log('Invalid choice. Please enter 1, 2, 3 or 4.');
+    }
+  }
+
+  rl.close();
+}
+
+// Start
+console.log('Welcome to Employee CLI (in-memory).');
+mainLoop().catch(err => {
+  console.error('Unexpected error:', err);
+  rl.close();
+});
